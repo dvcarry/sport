@@ -17,8 +17,43 @@ export const initial:Data = {library:[
 {id:'crunch',name:'Скручивания',muscles:['Пресс'],equipment:'Свой вес'},
 {id:'pullup',name:'Подтягивания',muscles:['Спина','Бицепс'],equipment:'Турник'}],workouts:[]};
 export function readData():Data {try {const d=JSON.parse(localStorage.getItem('ritm-data')||'null');return d?.library && d?.workouts?d:initial;}catch{return initial;}}
-export async function getCloud():Promise<Data|null>{if(!supabase)return null;const {data:{session}}=await supabase.auth.getSession();if(!session){const {error}=await supabase.auth.signInAnonymously();if(error)throw error;}const {data,error}=await supabase.from('training_diaries').select('payload').maybeSingle();if(error)throw error;return data?.payload??null;}
-export async function saveCloud(payload:Data){if(!supabase)return;const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error('Нет сессии Supabase');const {error}=await supabase.from('training_diaries').upsert({user_id:user.id,payload,updated_at:new Date().toISOString()});if(error)throw error;}
+let cloudVersion:string|null=null;
+let cloudSnapshot:string|null=null;
+let pendingSave:Promise<void>=Promise.resolve();
 
-
+export async function getCloud(accept:()=>boolean=()=>true):Promise<Data|null>{
+ if(!supabase)return null;
+ await pendingSave;
+ const {data:{session}}=await supabase.auth.getSession();
+ if(!session){const {error}=await supabase.auth.signInAnonymously();if(error)throw error;}
+ const {data,error}=await supabase.rpc('read_training_diary');
+ if(error)throw error;
+ if(!accept())return null;
+ cloudVersion=data?.version??null;
+ cloudSnapshot=data?.payload?JSON.stringify(data.payload):null;
+ return data?.payload??null;
+}
+export function saveCloud(payload:Data):Promise<void>{
+ if(!supabase)return Promise.resolve();
+ const snapshot=JSON.stringify(payload);
+ const operation=pendingSave.then(async()=>{
+  if(snapshot===cloudSnapshot)return;
+  const {data,error}=await supabase!.rpc('save_training_diary',{p_payload:payload,p_version:cloudVersion});
+  if(error)throw error;
+  cloudVersion=data;cloudSnapshot=snapshot;
+ });
+ pendingSave=operation.catch(()=>{});
+ return operation;
+}
+export async function createDiaryCode(payload:Data):Promise<string>{
+ if(!supabase)throw new Error('Supabase не подключён');
+ await saveCloud(payload);
+ const {data,error}=await supabase.rpc('create_diary_code');if(error)throw error;return data;
+}
+export async function joinDiary(code:string,payload:Data):Promise<void>{
+ if(!supabase)throw new Error('Supabase не подключён');
+ await saveCloud(payload);
+ localStorage.setItem('ritm-before-link',JSON.stringify(payload));
+ const {error}=await supabase.rpc('join_diary',{p_code:code});if(error)throw error;
+}
 
