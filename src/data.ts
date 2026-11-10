@@ -26,7 +26,7 @@ export async function getCloud(accept:()=>boolean=()=>true):Promise<Data|null>{
  await pendingSave;
  const {data:{session}}=await supabase.auth.getSession();
  if(!session){const {error}=await supabase.auth.signInAnonymously();if(error)throw error;}
- const {data,error}=await supabase.rpc('read_training_diary');
+ const {data,error}=await supabase.rpc('read_training_diary').abortSignal(AbortSignal.timeout(15000));
  if(error)throw error;
  if(!accept())return null;
  cloudVersion=data?.version??null;
@@ -38,7 +38,7 @@ export function saveCloud(payload:Data):Promise<void>{
  const snapshot=JSON.stringify(payload);
  const operation=pendingSave.then(async()=>{
   if(snapshot===cloudSnapshot)return;
-  const {data,error}=await supabase!.rpc('save_training_diary',{p_payload:payload,p_version:cloudVersion});
+  const {data,error}=await supabase!.rpc('save_training_diary',{p_payload:payload,p_version:cloudVersion}).abortSignal(AbortSignal.timeout(15000));
   if(error)throw error;
   cloudVersion=data;cloudSnapshot=snapshot;
  });
@@ -48,12 +48,14 @@ export function saveCloud(payload:Data):Promise<void>{
 export async function createDiaryCode(payload:Data):Promise<string>{
  if(!supabase)throw new Error('Supabase не подключён');
  await saveCloud(payload);
- const {data,error}=await supabase.rpc('create_diary_code');if(error)throw error;return data;
+ const {data,error}=await supabase.rpc('create_diary_code').abortSignal(AbortSignal.timeout(15000));if(error)throw error;return data;
 }
 export async function joinDiary(code:string,payload:Data):Promise<void>{
  if(!supabase)throw new Error('Supabase не подключён');
  await saveCloud(payload);
  localStorage.setItem('ritm-before-link',JSON.stringify(payload));
- const {error}=await supabase.rpc('join_diary',{p_code:code});if(error)throw error;
+ const {error}=await supabase.rpc('join_diary',{p_code:code}).abortSignal(AbortSignal.timeout(15000));if(error)throw error;
 }
+
+
 
