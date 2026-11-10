@@ -17,6 +17,8 @@ export const initial:Data = {library:[
 {id:'crunch',name:'Скручивания',muscles:['Пресс'],equipment:'Свой вес'},
 {id:'pullup',name:'Подтягивания',muscles:['Спина','Бицепс'],equipment:'Турник'}],workouts:[]};
 export function readData():Data {try {const d=JSON.parse(localStorage.getItem('ritm-data')||'null');return d?.library && d?.workouts?d:initial;}catch{return initial;}}
+let linkedDiary=false;
+export const hasLinkedDiary=()=>linkedDiary;
 let cloudVersion:string|null=null;
 let cloudSnapshot:string|null=null;
 let pendingSave:Promise<void>=Promise.resolve();
@@ -29,6 +31,7 @@ export async function getCloud(accept:()=>boolean=()=>true):Promise<Data|null>{
  const {data,error}=await supabase.rpc('read_training_diary').abortSignal(AbortSignal.timeout(15000));
  if(error)throw error;
  if(!accept())return null;
+ linkedDiary=data?.linked===true;
  cloudVersion=data?.version??null;
  cloudSnapshot=data?.payload?JSON.stringify(data.payload):null;
  return data?.payload??null;
@@ -56,6 +59,7 @@ export async function joinDiary(code:string,payload:Data):Promise<void>{
  localStorage.setItem('ritm-before-link',JSON.stringify(payload));
  const {error}=await supabase.rpc('join_diary',{p_code:code}).abortSignal(AbortSignal.timeout(15000));if(error)throw error;
 }
+
 
 
 
