@@ -1,3 +1,4 @@
+import type {HabitDay,WaterGlass} from './dailyWellness';
 import type {FoodProduct,ProductType,Meal} from './foodProducts';
 import type {FoodEntry} from './nutrition';
 import { createClient } from '@supabase/supabase-js';
@@ -5,7 +6,7 @@ export type Exercise = {id:string;name:string;muscles:string[];equipment:string}
 export type WorkoutSet = {id:string;weight:number;reps:number;done:boolean;addedAt?:string;warmup?:boolean;effort?:'easy'|'normal'|'hard'};
 export type WorkoutExercise = {id:string;exercise:Exercise;sets:WorkoutSet[]};
 export type Workout = {id:string;startedAt:string;finishedAt?:string;importedDurationMinutes?:number;importFingerprint?:string;exercises:WorkoutExercise[]};
-export type Data = {library:Exercise[];workouts:Workout[];nutrition?:FoodEntry[];foodProducts?:FoodProduct[];foodTypes?:ProductType[];meals?:Meal[]};
+export type Data = {library:Exercise[];workouts:Workout[];nutrition?:FoodEntry[];foodProducts?:FoodProduct[];foodTypes?:ProductType[];meals?:Meal[];dailyHabits?:HabitDay[];waterGlasses?:WaterGlass[]};
 const env = (import.meta as unknown as {env:Record<string,string>}).env;
 export const supabase = env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY ? createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY) : null;
 export const uid = () => crypto.randomUUID();
@@ -61,6 +62,7 @@ export async function joinDiary(code:string,payload:Data):Promise<void>{
  localStorage.setItem('ritm-before-link',JSON.stringify(payload));
  const {error}=await supabase.rpc('join_diary',{p_code:code}).abortSignal(AbortSignal.timeout(15000));if(error)throw error;
 }
+
 
 
 
